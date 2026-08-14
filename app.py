@@ -399,14 +399,14 @@ with tab_monthly:
             file_name=f"pl_monthly_{selected_year}.csv",
             mime="text/csv"
         )
-
 # ============================================================================
-# TAB 3: RAW DATA
+# TAB 3: RAW DATA (FORMATO LARGO POR CUENTAS)
 # ============================================================================
 with tab_raw:
-    st.subheader(f"Raw Data – {selected_year}")
+    st.subheader(f"Raw Data by Account – {selected_year}")
+    st.caption("Each row represents one P&L account (GTS, Returns, Bonus, GTN, NTS, COGS, GP Std)")
 
-    # Month filter (multi-select) for raw data only
+    # Month filter for raw data
     month_options = sorted(df_filtered["month"].unique())
     selected_months_raw = st.multiselect(
         "Select Months",
@@ -418,97 +418,209 @@ with tab_raw:
     # Apply month filter
     df_raw = df_filtered[df_filtered["month"].isin(selected_months_raw)] if selected_months_raw else df_filtered
 
-    # Display columns for raw data
-    raw_cols = [
-        "year", "month", "client_name", "channel", "category",
-        "sku", "product_name", "units_sold",
-        "gross_sales", "returns", "bonus",
-        "structural_gtn_pct", "tactical_gtn_pct", "total_gtn_pct", "gtn_amount",
-        "nts", "cogs", "gp_std", "gp_std_pct"
-    ]
+    # --- BUILD LONG FORMAT BY ACCOUNT ---
+    st.info("🔄 Transforming data to long format by account...")
 
-    # Ensure all columns exist
-    available_cols = [col for col in raw_cols if col in df_raw.columns]
-    df_raw_display = df_raw[available_cols].copy()
+    # Create a list to store all account rows
+    account_rows = []
 
-    # Rename columns for display
-    display_names = {
-        "year": "Year", "month": "Month", "client_name": "Client", 
-        "channel": "Channel", "category": "Category",
-        "sku": "SKU", "product_name": "Product", "units_sold": "Units",
-        "gross_sales": "Gross Sales", "returns": "Returns", "bonus": "Bonus",
-        "structural_gtn_pct": "Struct GTN %", "tactical_gtn_pct": "Tact GTN %", 
-        "total_gtn_pct": "Total GTN %", "gtn_amount": "GTN £",
-        "nts": "NTS", "cogs": "COGS", "gp_std": "GP Std", "gp_std_pct": "GP %"
+    # Define the accounts and their corresponding columns
+    account_mapping = {
+        "Gross Sales": "gross_sales",
+        "Returns": "returns",
+        "Bonuses": "bonus",
+        "GTN": "gtn_amount",
+        "Net Trade Sales": "nts",
+        "COGS": "cogs",
+        "Gross Profit Std": "gp_std"
     }
-    
-    df_raw_display = df_raw_display.rename(columns=display_names)
 
-    st.caption(f"Showing {len(df_raw_display):,} rows")
+    # Iterate over each row in the filtered dataframe
+    for _, row in df_raw.iterrows():
+        for account_name, col_name in account_mapping.items():
+            value = row[col_name]
+            # We want to show positive values for all accounts
+            # (GP is already positive, the others are shown as absolute values)
+            if account_name in ["Gross Sales", "Net Trade Sales", "Gross Profit Std"]:
+                display_value = value
+            else:
+                display_value = abs(value)
+            
+            account_rows.append({
+                "Year": row["year"],
+                "Month": row["month"],
+                "Client": row["client_name"],
+                "Client Code": row["client_code"],
+                "SKU": row["sku"],
+                "Product": row["product_name"],
+                "Category": row["category"],
+                "Channel": row["channel"],
+                "Account": account_name,
+                "Value": display_value
+            })
 
-    if not df_raw_display.empty:
-        # Build format dict dynamically
-        format_dict = {
-            "Units": "{:,.0f}",
-            "Gross Sales": "£{:,.2f}",
-            "Returns": "£{:,.2f}",
-            "Bonus": "£{:,.2f}",
-            "Struct GTN %": "{:.1%}",
-            "Tact GTN %": "{:.1%}",
-            "Total GTN %": "{:.1%}",
-            "GTN £": "£{:,.2f}",
-            "NTS": "£{:,.2f}",
-            "COGS": "£{:,.2f}",
-            "GP Std": "£{:,.2f}",
-            "GP %": "{:.1f}%"
-        }
-        # Only include columns that exist
-        format_dict = {k: v for k, v in format_dict.items() if k in df_raw_display.columns}
+    # Convert to DataFrame
+    df_accounts = pd.DataFrame(account_rows)
+
+    # Display metrics
+    col1, col2, col3 = st.columns(3)
+    total_rows = len(df_accounts)
+    total_gp = df_accounts[df_accounts["Account"] == "Gross Profit Std"]["Value"].sum() if not df_accounts.empty else 0
+    total_nts = df_accounts[df_accounts["Account"] == "Net Trade Sales"]["Value"].sum() if not df_accounts.empty else 0
+    gp_pct = (total_gp / total_nts * 100) if total_nts > 0 else 0
+
+    col1.metric("📋 Total Rows", f"{total_rows:,}")
+    col2.metric("💎 GP Std", f"£{total_gp:,.0f}")
+    col3.metric("📈 GP %", f"{gp_pct:.1f}%")
+
+    st.divider()
+
+    # Display the data
+    st.subheader("📋 P&L by Account (Long Format)")
+
+    if not df_accounts.empty:
+        # Display columns for raw data
+        display_cols = ["Year", "Month", "Client", "Client Code", "Channel", "Category", "SKU", "Product", "Account", "Value"]
+
+        # Pivot to show accounts as columns for better readability
+        st.caption("📊 Pivot view: Accounts as columns")
+
+        # Create a pivot table for better visualization
+        pivot_cols = ["Year", "Month", "Client", "Client Code", "Channel", "Category", "SKU", "Product"]
+        pivot_df = df_accounts.pivot_table(
+            index=pivot_cols,
+            columns="Account",
+            values="Value",
+            aggfunc="sum"
+        ).reset_index()
+
+        # Reorder columns for better display
+        col_order = ["Year", "Month", "Client", "Client Code", "Channel", "Category", "SKU", "Product",
+                    "Gross Sales", "Returns", "Bonuses", "GTN", "Net Trade Sales", "COGS", "Gross Profit Std"]
+        
+        # Only keep columns that exist
+        col_order = [c for c in col_order if c in pivot_df.columns]
+        pivot_df = pivot_df[col_order]
 
         st.dataframe(
-            df_raw_display.style.format(format_dict),
+            pivot_df.style.format({
+                "Gross Sales": "£{:,.2f}",
+                "Returns": "£{:,.2f}",
+                "Bonuses": "£{:,.2f}",
+                "GTN": "£{:,.2f}",
+                "Net Trade Sales": "£{:,.2f}",
+                "COGS": "£{:,.2f}",
+                "Gross Profit Std": "£{:,.2f}"
+            }),
             use_container_width=True,
             hide_index=True,
             height=500
         )
+
+        # Also show the long format (original)
+        st.caption("📋 Long format: One row per account")
+
+        st.dataframe(
+            df_accounts.style.format({
+                "Value": "£{:,.2f}"
+            }),
+            use_container_width=True,
+            hide_index=True,
+            height=300
+        )
+
     else:
         st.info("No data available for the selected filters.")
 
-    # Download buttons
+    # ============================================================================
+    # DOWNLOAD BUTTONS - RAW DATA (LONG FORMAT)
+    # ============================================================================
     st.divider()
-    col_btn1, col_btn2 = st.columns(2)
+    st.subheader("📥 Download Options")
+
+    col_btn1, col_btn2, col_btn3 = st.columns(3)
 
     with col_btn1:
-        if not df_raw.empty:
-            csv_raw_filtered = df_raw.to_csv(index=False).encode("utf-8")
+        # Download Long Format (by Account)
+        if not df_accounts.empty:
+            csv_long = df_accounts.to_csv(index=False).encode("utf-8")
             st.download_button(
-                label="📥 Download Filtered Raw Data",
-                data=csv_raw_filtered,
-                file_name=f"pl_raw_data_{selected_year}_filtered.csv",
+                label="📥 Download Long Format (by Account)",
+                data=csv_long,
+                file_name=f"pl_raw_data_long_{selected_year}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
 
     with col_btn2:
-        csv_raw_full = df.to_csv(index=False).encode("utf-8")
+        # Download Pivot Format (Accounts as columns)
+        if not pivot_df.empty:
+            csv_pivot = pivot_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Pivot Format (Accounts as columns)",
+                data=csv_pivot,
+                file_name=f"pl_raw_data_pivot_{selected_year}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+    with col_btn3:
+        # Download Full Raw Data (original format with all columns)
+        csv_full = df.to_csv(index=False).encode("utf-8")
         st.download_button(
-            label="📥 Download Full Raw Data",
-            data=csv_raw_full,
+            label="📥 Download Full Raw Data (Original)",
+            data=csv_full,
             file_name="pl_raw_data_full.csv",
             mime="text/csv",
             use_container_width=True
         )
 
-# ============================================================================
-# FOOTER
-# ============================================================================
-st.divider()
-st.markdown(
-    """
-    <div class="footer">
-        BeautyLab — P&L Visualizer &bull; Data up to GP Std &bull; 
-        Built with Streamlit
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    # ============================================================================
+    # SHOW SAMPLE OF THE LONG FORMAT
+    # ============================================================================
+    with st.expander("📋 View Long Format Structure (Sample)"):
+        st.caption("Columns: Year, Month, Client, Client Code, SKU, Account, Value")
+        if not df_accounts.empty:
+            sample_df = df_accounts[["Year", "Month", "Client", "Client Code", "SKU", "Account", "Value"]].head(20)
+            st.dataframe(
+                sample_df.style.format({
+                    "Value": "£{:,.2f}"
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("No data available")
+
+    # ============================================================================
+    # EXPORT EXACT FORMAT REQUESTED
+    # ============================================================================
+    with st.expander("📥 Export Exact Format: Year, Month, Client, Client Code, SKU, Account, Value"):
+        st.caption("This is the exact format you requested for the Full Raw Data")
+        
+        if not df_accounts.empty:
+            # Select only the requested columns
+            export_df = df_accounts[["Year", "Month", "Client", "Client Code", "SKU", "Account", "Value"]].copy()
+            
+            # Remove duplicates if any (shouldn't happen but just in case)
+            export_df = export_df.drop_duplicates()
+            
+            st.dataframe(
+                export_df.style.format({
+                    "Value": "£{:,.2f}"
+                }),
+                use_container_width=True,
+                hide_index=True,
+                height=300
+            )
+            
+            csv_export = export_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Exact Format (Year, Month, Client, Client Code, SKU, Account, Value)",
+                data=csv_export,
+                file_name=f"pl_raw_data_exact_format_{selected_year}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        else:
+            st.info("No data available for the selected filters.")
