@@ -208,9 +208,10 @@ df_filtered = df[
 # ============================================================================
 # TABS
 # ============================================================================
-tab_summary, tab_monthly, tab_raw = st.tabs([
+tab_summary, tab_monthly, tab_gtn, tab_raw = st.tabs([
     "📊 P&L Summary (Annual)",
     "📈 Monthly P&L",
+    "📊 GTN Breakdown",
     "📋 Raw Data"
 ])
 
@@ -401,7 +402,227 @@ with tab_monthly:
         )
 
 # ============================================================================
-# TAB 3: RAW DATA (FORMATO POR CUENTAS - VERSIÓN SIMPLIFICADA)
+# TAB 3: GTN BREAKDOWN
+# ============================================================================
+with tab_gtn:
+    st.subheader(f"Gross-to-Net (GTN) Breakdown – {selected_year}")
+    st.caption("Desglose de inversión comercial por cliente, categoría y componente")
+
+    # --- FILTROS ESPECÍFICOS PARA GTN ---
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Cliente (multi-select)
+        gtn_client_options = sorted(df_filtered["client_name"].unique())
+        gtn_selected_clients = st.multiselect(
+            "Select Clients (GTN)",
+            options=gtn_client_options,
+            default=gtn_client_options,
+            key="gtn_clients"
+        )
+
+    with col2:
+        # Categoría (multi-select)
+        gtn_cat_options = sorted(df_filtered["category"].unique())
+        gtn_selected_cats = st.multiselect(
+            "Select Categories (GTN)",
+            options=gtn_cat_options,
+            default=gtn_cat_options,
+            key="gtn_cats"
+        )
+
+    # Aplicar filtros
+    df_gtn_filtered = df_filtered[
+        (df_filtered["client_name"].isin(gtn_selected_clients)) &
+        (df_filtered["category"].isin(gtn_selected_cats))
+    ]
+
+    # --- MÉTRICAS DE GTN ---
+    c1, c2, c3, c4 = st.columns(4)
+
+    total_gts = df_gtn_filtered["gross_sales"].sum()
+    total_gtn = df_gtn_filtered["gtn_amount"].sum()
+    total_nts = df_gtn_filtered["nts"].sum()
+    avg_gtn_pct = (total_gtn / total_gts * 100) if total_gts > 0 else 0
+
+    c1.metric("💰 GTS (Gross Trade Sales)", f"£{total_gts:,.0f}")
+    c2.metric("📉 GTN Total", f"£{total_gtn:,.0f}")
+    c3.metric("📊 NTS (Net Trade Sales)", f"£{total_nts:,.0f}")
+    c4.metric("📈 GTN % Promedio", f"{avg_gtn_pct:.1f}%")
+
+    st.divider()
+
+    # --- VISTA 1: GTN POR CLIENTE Y CATEGORÍA (PIVOT) ---
+    st.subheader("📊 GTN % by Client and Category")
+
+    # Calcular GTN promedio por cliente y categoría
+    df_gtn_pivot = df_gtn_filtered.groupby(["client_name", "category"]).agg({
+        "gross_sales": "sum",
+        "gtn_amount": "sum"
+    }).reset_index()
+
+    df_gtn_pivot["gtn_pct"] = (df_gtn_pivot["gtn_amount"] / df_gtn_pivot["gross_sales"] * 100).round(1)
+
+    # Crear pivot table
+    gtn_pivot_table = df_gtn_pivot.pivot(index="client_name", columns="category", values="gtn_pct")
+
+    st.dataframe(
+        gtn_pivot_table.style.format("{:.1f}%"),
+        use_container_width=True,
+        height=300
+    )
+
+    # --- VISTA 2: DESGLOSE DE GTN ESTRUCTURAL ---
+    st.subheader("🏗️ Structural GTN Breakdown")
+
+    # Calcular GTN estructural por cliente (promedio)
+    df_structural = df_gtn_filtered.groupby("client_name").agg({
+        "structural_gtn_pct": "mean",
+        "gross_sales": "sum"
+    }).reset_index()
+
+    df_structural["structural_gtn_pct"] = (df_structural["structural_gtn_pct"] * 100).round(1)
+    df_structural = df_structural.sort_values("structural_gtn_pct", ascending=False)
+
+    st.dataframe(
+        df_structural.style.format({
+            "structural_gtn_pct": "{:.1f}%",
+            "gross_sales": "£{:,.0f}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 3: DESGLOSE DE GTN TÁCTICO ---
+    st.subheader("🎯 Tactical GTN Breakdown")
+
+    # Calcular GTN táctico por cliente y categoría
+    df_tactical = df_gtn_filtered.groupby(["client_name", "category"]).agg({
+        "tactical_gtn_pct": "mean",
+        "gross_sales": "sum"
+    }).reset_index()
+
+    df_tactical["tactical_gtn_pct"] = (df_tactical["tactical_gtn_pct"] * 100).round(1)
+    df_tactical = df_tactical.sort_values("tactical_gtn_pct", ascending=False)
+
+    st.dataframe(
+        df_tactical.style.format({
+            "tactical_gtn_pct": "{:.1f}%",
+            "gross_sales": "£{:,.0f}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 4: COMPARATIVO ESTRUCTURAL VS TÁCTICO ---
+    st.subheader("⚖️ Structural vs Tactical GTN Comparison")
+
+    # Merge estructural y táctico para comparativa
+    df_compare = df_structural[["client_name", "structural_gtn_pct"]].merge(
+        df_tactical.groupby("client_name").agg({"tactical_gtn_pct": "mean"}).reset_index(),
+        on="client_name",
+        how="outer"
+    ).fillna(0)
+
+    df_compare["total_gtn_pct"] = df_compare["structural_gtn_pct"] + df_compare["tactical_gtn_pct"]
+    df_compare = df_compare.sort_values("total_gtn_pct", ascending=False)
+
+    st.dataframe(
+        df_compare.style.format({
+            "structural_gtn_pct": "{:.1f}%",
+            "tactical_gtn_pct": "{:.1f}%",
+            "total_gtn_pct": "{:.1f}%"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 5: DETALLE DE GTN POR MES (Solo si hay datos mensuales) ---
+    st.subheader("📅 Monthly GTN Evolution")
+
+    # Calcular GTN mensual
+    df_gtn_monthly = df_gtn_filtered.groupby("month").agg({
+        "gross_sales": "sum",
+        "gtn_amount": "sum"
+    }).reset_index().sort_values("month")
+
+    df_gtn_monthly["gtn_pct"] = (df_gtn_monthly["gtn_amount"] / df_gtn_monthly["gross_sales"] * 100).round(1)
+
+    # Añadir nombres de meses
+    month_names = {
+        1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+        5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+        9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
+    }
+    df_gtn_monthly["month_name"] = df_gtn_monthly["month"].map(month_names)
+
+    st.dataframe(
+        df_gtn_monthly[["month_name", "gross_sales", "gtn_amount", "gtn_pct"]].style.format({
+            "gross_sales": "£{:,.0f}",
+            "gtn_amount": "£{:,.0f}",
+            "gtn_pct": "{:.1f}%"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- DESCARGA DE DATOS GTN ---
+    st.divider()
+    st.subheader("📥 Download GTN Data")
+
+    col_btn1, col_btn2 = st.columns(2)
+
+    with col_btn1:
+        # Preparar datos GTN para descarga (formato largo)
+        gtn_export_cols = [
+            "client_name", "category", "structural_gtn_pct", "tactical_gtn_pct", 
+            "total_gtn_pct", "gross_sales", "gtn_amount", "nts"
+        ]
+        df_gtn_export = df_gtn_filtered.groupby(["client_name", "category"]).agg({
+            "structural_gtn_pct": "mean",
+            "tactical_gtn_pct": "mean",
+            "total_gtn_pct": "mean",
+            "gross_sales": "sum",
+            "gtn_amount": "sum",
+            "nts": "sum"
+        }).reset_index()
+
+        df_gtn_export["structural_gtn_pct"] = (df_gtn_export["structural_gtn_pct"] * 100).round(1)
+        df_gtn_export["tactical_gtn_pct"] = (df_gtn_export["tactical_gtn_pct"] * 100).round(1)
+        df_gtn_export["total_gtn_pct"] = (df_gtn_export["total_gtn_pct"] * 100).round(1)
+
+        csv_gtn = df_gtn_export.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download GTN Summary",
+            data=csv_gtn,
+            file_name=f"gtn_summary_{selected_year}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+    with col_btn2:
+        # Descargar datos detallados de GTN
+        gtn_detail_cols = [
+            "year", "month", "client_name", "category", "sku", "product_name",
+            "structural_gtn_pct", "tactical_gtn_pct", "total_gtn_pct", 
+            "gross_sales", "gtn_amount", "nts"
+        ]
+        df_gtn_detail = df_gtn_filtered[gtn_detail_cols].copy()
+        df_gtn_detail["structural_gtn_pct"] = (df_gtn_detail["structural_gtn_pct"] * 100).round(1)
+        df_gtn_detail["tactical_gtn_pct"] = (df_gtn_detail["tactical_gtn_pct"] * 100).round(1)
+        df_gtn_detail["total_gtn_pct"] = (df_gtn_detail["total_gtn_pct"] * 100).round(1)
+
+        csv_gtn_detail = df_gtn_detail.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download GTN Detail",
+            data=csv_gtn_detail,
+            file_name=f"gtn_detail_{selected_year}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+        
+# ============================================================================
+# TAB 4: RAW DATA 
 # ============================================================================
 with tab_raw:
     st.subheader(f"Raw Data by Account – {selected_year}")
