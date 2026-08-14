@@ -399,12 +399,13 @@ with tab_monthly:
             file_name=f"pl_monthly_{selected_year}.csv",
             mime="text/csv"
         )
+
 # ============================================================================
-# TAB 3: RAW DATA (FORMATO LARGO POR CUENTAS)
+# TAB 3: RAW DATA (FORMATO POR CUENTAS - VERSIÓN SIMPLIFICADA)
 # ============================================================================
 with tab_raw:
     st.subheader(f"Raw Data by Account – {selected_year}")
-    st.caption("Each row represents one P&L account (GTS, Returns, Bonus, GTN, NTS, COGS, GP Std)")
+    st.caption("P&L accounts as columns (GTS, Returns, Bonus, GTN, NTS, COGS, GP Std)")
 
     # Month filter for raw data
     month_options = sorted(df_filtered["month"].unique())
@@ -419,8 +420,6 @@ with tab_raw:
     df_raw = df_filtered[df_filtered["month"].isin(selected_months_raw)] if selected_months_raw else df_filtered
 
     # --- BUILD LONG FORMAT BY ACCOUNT ---
-    st.info("🔄 Transforming data to long format by account...")
-
     # Create a list to store all account rows
     account_rows = []
 
@@ -439,8 +438,7 @@ with tab_raw:
     for _, row in df_raw.iterrows():
         for account_name, col_name in account_mapping.items():
             value = row[col_name]
-            # We want to show positive values for all accounts
-            # (GP is already positive, the others are shown as absolute values)
+            # For negative accounts, we show absolute value
             if account_name in ["Gross Sales", "Net Trade Sales", "Gross Profit Std"]:
                 display_value = value
             else:
@@ -475,16 +473,12 @@ with tab_raw:
 
     st.divider()
 
-    # Display the data
-    st.subheader("📋 P&L by Account (Long Format)")
+    # ============================================================================
+    # SECTION 1: PIVOT VIEW (Accounts as columns)
+    # ============================================================================
+    st.subheader("📊 Pivot View: Accounts as columns")
 
     if not df_accounts.empty:
-        # Display columns for raw data
-        display_cols = ["Year", "Month", "Client", "Client Code", "Channel", "Category", "SKU", "Product", "Account", "Value"]
-
-        # Pivot to show accounts as columns for better readability
-        st.caption("📊 Pivot view: Accounts as columns")
-
         # Create a pivot table for better visualization
         pivot_cols = ["Year", "Month", "Client", "Client Code", "Channel", "Category", "SKU", "Product"]
         pivot_df = df_accounts.pivot_table(
@@ -516,111 +510,43 @@ with tab_raw:
             hide_index=True,
             height=500
         )
+    else:
+        st.info("No data available for the selected filters.")
 
-        # Also show the long format (original)
-        st.caption("📋 Long format: One row per account")
+    st.divider()
 
+    # ============================================================================
+    # SECTION 2: EXPORT EXACT FORMAT
+    # ============================================================================
+    st.subheader("📥 Export Exact Format")
+    st.caption("Format: Year, Month, Client, Client Code, SKU, Account, Value")
+
+    if not df_accounts.empty:
+        # Select only the requested columns
+        export_df = df_accounts[["Year", "Month", "Client", "Client Code", "SKU", "Account", "Value"]].copy()
+        
+        # Remove duplicates if any
+        export_df = export_df.drop_duplicates()
+        
+        # Show sample
+        st.caption(f"Preview ({len(export_df):,} rows)")
         st.dataframe(
-            df_accounts.style.format({
+            export_df.head(20).style.format({
                 "Value": "£{:,.2f}"
             }),
             use_container_width=True,
             hide_index=True,
-            height=300
+            height=250
         )
-
-    else:
-        st.info("No data available for the selected filters.")
-
-    # ============================================================================
-    # DOWNLOAD BUTTONS - RAW DATA (LONG FORMAT)
-    # ============================================================================
-    st.divider()
-    st.subheader("📥 Download Options")
-
-    col_btn1, col_btn2, col_btn3 = st.columns(3)
-
-    with col_btn1:
-        # Download Long Format (by Account)
-        if not df_accounts.empty:
-            csv_long = df_accounts.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download Long Format (by Account)",
-                data=csv_long,
-                file_name=f"pl_raw_data_long_{selected_year}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-
-    with col_btn2:
-        # Download Pivot Format (Accounts as columns)
-        if not pivot_df.empty:
-            csv_pivot = pivot_df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download Pivot Format (Accounts as columns)",
-                data=csv_pivot,
-                file_name=f"pl_raw_data_pivot_{selected_year}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-
-    with col_btn3:
-        # Download Full Raw Data (original format with all columns)
-        csv_full = df.to_csv(index=False).encode("utf-8")
+        
+        # Download button
+        csv_export = export_df.to_csv(index=False).encode("utf-8")
         st.download_button(
-            label="📥 Download Full Raw Data (Original)",
-            data=csv_full,
-            file_name="pl_raw_data_full.csv",
+            label="📥 Download Full Raw Data (Year, Month, Client, Client Code, SKU, Account, Value)",
+            data=csv_export,
+            file_name=f"pl_raw_data_exact_format_{selected_year}.csv",
             mime="text/csv",
             use_container_width=True
         )
-
-    # ============================================================================
-    # SHOW SAMPLE OF THE LONG FORMAT
-    # ============================================================================
-    with st.expander("📋 View Long Format Structure (Sample)"):
-        st.caption("Columns: Year, Month, Client, Client Code, SKU, Account, Value")
-        if not df_accounts.empty:
-            sample_df = df_accounts[["Year", "Month", "Client", "Client Code", "SKU", "Account", "Value"]].head(20)
-            st.dataframe(
-                sample_df.style.format({
-                    "Value": "£{:,.2f}"
-                }),
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("No data available")
-
-    # ============================================================================
-    # EXPORT EXACT FORMAT REQUESTED
-    # ============================================================================
-    with st.expander("📥 Export Exact Format: Year, Month, Client, Client Code, SKU, Account, Value"):
-        st.caption("This is the exact format you requested for the Full Raw Data")
-        
-        if not df_accounts.empty:
-            # Select only the requested columns
-            export_df = df_accounts[["Year", "Month", "Client", "Client Code", "SKU", "Account", "Value"]].copy()
-            
-            # Remove duplicates if any (shouldn't happen but just in case)
-            export_df = export_df.drop_duplicates()
-            
-            st.dataframe(
-                export_df.style.format({
-                    "Value": "£{:,.2f}"
-                }),
-                use_container_width=True,
-                hide_index=True,
-                height=300
-            )
-            
-            csv_export = export_df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download Exact Format (Year, Month, Client, Client Code, SKU, Account, Value)",
-                data=csv_export,
-                file_name=f"pl_raw_data_exact_format_{selected_year}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-        else:
-            st.info("No data available for the selected filters.")
+    else:
+        st.info("No data available for the selected filters.")
