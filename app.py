@@ -208,10 +208,11 @@ df_filtered = df[
 # ============================================================================
 # TABS
 # ============================================================================
-tab_summary, tab_monthly, tab_gtn, tab_raw = st.tabs([
+tab_summary, tab_monthly, tab_gtn, tab_cost, tab_raw = st.tabs([
     "📊 P&L Summary (Annual)",
     "📈 Monthly P&L",
     "📊 GTN Breakdown",
+    "💰 Cost Analysis",
     "📋 Raw Data"
 ])
 
@@ -620,9 +621,232 @@ with tab_gtn:
             mime="text/csv",
             use_container_width=True
         )
-        
 # ============================================================================
-# TAB 4: RAW DATA 
+# TAB 4: COST ANALYSIS
+# ============================================================================
+with tab_cost:
+    st.subheader(f"💰 Cost Analysis – {selected_year}")
+    st.caption("Análisis detallado de COGS, márgenes y eficiencia por SKU y cliente")
+
+    # --- FILTROS DE COSTOS ---
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        cost_client_options = sorted(df_filtered["client_name"].unique())
+        cost_selected_clients = st.multiselect(
+            "Select Clients",
+            options=cost_client_options,
+            default=cost_client_options,
+            key="cost_clients"
+        )
+
+    with col2:
+        cost_cat_options = sorted(df_filtered["category"].unique())
+        cost_selected_cats = st.multiselect(
+            "Select Categories",
+            options=cost_cat_options,
+            default=cost_cat_options,
+            key="cost_cats"
+        )
+
+    with col3:
+        cost_sku_options = sorted(df_filtered["sku"].unique())
+        cost_selected_skus = st.multiselect(
+            "Select SKUs",
+            options=cost_sku_options,
+            default=cost_sku_options,
+            key="cost_skus"
+        )
+
+    # Aplicar filtros
+    df_cost = df_filtered[
+        (df_filtered["client_name"].isin(cost_selected_clients)) &
+        (df_filtered["category"].isin(cost_selected_cats)) &
+        (df_filtered["sku"].isin(cost_selected_skus))
+    ]
+
+    # --- MÉTRICAS DE COSTOS ---
+    c1, c2, c3, c4, c5 = st.columns(5)
+
+    total_units = df_cost["units_sold"].sum()
+    total_cogs = df_cost["cogs"].sum()
+    total_nts = df_cost["nts"].sum()
+    avg_cogs_per_unit = total_cogs / total_units if total_units > 0 else 0
+    cogs_as_pct_nts = (total_cogs / total_nts * 100) if total_nts > 0 else 0
+
+    c1.metric("📦 Units", f"{total_units:,.0f}")
+    c2.metric("💰 Total COGS", f"£{total_cogs:,.0f}")
+    c3.metric("📊 Avg COGS/Unit", f"£{avg_cogs_per_unit:.2f}")
+    c4.metric("📈 COGS % NTS", f"{cogs_as_pct_nts:.1f}%")
+    c5.metric("💎 GP Std", f"£{(total_nts - total_cogs):,.0f}")
+
+    st.divider()
+
+    # --- VISTA 1: COGS POR SKU ---
+    st.subheader("📊 COGS per Unit by SKU")
+
+    df_cost_sku = df_cost.groupby(["sku", "product_name", "category"]).agg({
+        "units_sold": "sum",
+        "cogs": "sum",
+        "nts": "sum"
+    }).reset_index()
+
+    df_cost_sku["cogs_per_unit"] = df_cost_sku["cogs"] / df_cost_sku["units_sold"]
+    df_cost_sku["gp_per_unit"] = (df_cost_sku["nts"] - df_cost_sku["cogs"]) / df_cost_sku["units_sold"]
+    df_cost_sku["gp_pct"] = (df_cost_sku["nts"] - df_cost_sku["cogs"]) / df_cost_sku["nts"] * 100
+    df_cost_sku = df_cost_sku.sort_values("cogs_per_unit", ascending=False)
+
+    st.dataframe(
+        df_cost_sku.style.format({
+            "units_sold": "{:,.0f}",
+            "cogs": "£{:,.2f}",
+            "cogs_per_unit": "£{:,.2f}",
+            "gp_per_unit": "£{:,.2f}",
+            "gp_pct": "{:.1f}%"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 2: COGS POR CLIENTE ---
+    st.subheader("🏢 COGS by Client")
+
+    df_cost_client = df_cost.groupby("client_name").agg({
+        "units_sold": "sum",
+        "cogs": "sum",
+        "nts": "sum"
+    }).reset_index()
+
+    df_cost_client["cogs_per_unit"] = df_cost_client["cogs"] / df_cost_client["units_sold"]
+    df_cost_client["cogs_pct_nts"] = df_cost_client["cogs"] / df_cost_client["nts"] * 100
+    df_cost_client = df_cost_client.sort_values("cogs_per_unit", ascending=False)
+
+    st.dataframe(
+        df_cost_client.style.format({
+            "units_sold": "{:,.0f}",
+            "cogs": "£{:,.2f}",
+            "cogs_per_unit": "£{:,.2f}",
+            "cogs_pct_nts": "{:.1f}%"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 3: COGS POR CATEGORÍA ---
+    st.subheader("📁 COGS by Category")
+
+    df_cost_cat = df_cost.groupby("category").agg({
+        "units_sold": "sum",
+        "cogs": "sum",
+        "nts": "sum"
+    }).reset_index()
+
+    df_cost_cat["cogs_per_unit"] = df_cost_cat["cogs"] / df_cost_cat["units_sold"]
+    df_cost_cat["cogs_pct_nts"] = df_cost_cat["cogs"] / df_cost_cat["nts"] * 100
+    df_cost_cat = df_cost_cat.sort_values("cogs_per_unit", ascending=False)
+
+    st.dataframe(
+        df_cost_cat.style.format({
+            "units_sold": "{:,.0f}",
+            "cogs": "£{:,.2f}",
+            "cogs_per_unit": "£{:,.2f}",
+            "cogs_pct_nts": "{:.1f}%"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 4: MATRIZ CLIENTE x SKU (COGS y Margen) ---
+    st.subheader("📊 Client × SKU COGS & Margin Matrix")
+
+    # Crear pivot para COGS por unidad
+    df_cost_matrix = df_cost.groupby(["client_name", "sku", "product_name"]).agg({
+        "units_sold": "sum",
+        "cogs": "sum",
+        "nts": "sum"
+    }).reset_index()
+
+    df_cost_matrix["cogs_per_unit"] = df_cost_matrix["cogs"] / df_cost_matrix["units_sold"]
+    df_cost_matrix["gp_pct"] = (df_cost_matrix["nts"] - df_cost_matrix["cogs"]) / df_cost_matrix["nts"] * 100
+
+    # Pivot para mostrar COGS por unidad (clientes como columnas)
+    cogs_pivot = df_cost_matrix.pivot_table(
+        index=["sku", "product_name"],
+        columns="client_name",
+        values="cogs_per_unit"
+    )
+
+    # Pivot para mostrar GP % (clientes como columnas)
+    gp_pivot = df_cost_matrix.pivot_table(
+        index=["sku", "product_name"],
+        columns="client_name",
+        values="gp_pct"
+    )
+
+    # Mostrar ambos pivots
+    st.caption("COGS per Unit by Client")
+    st.dataframe(cogs_pivot.style.format("£{:.2f}"), use_container_width=True, height=300)
+
+    st.caption("GP % by Client")
+    st.dataframe(gp_pivot.style.format("{:.1f}%"), use_container_width=True, height=300)
+
+    # --- VISTA 5: EFICIENCIA DE COSTOS (Ranking) ---
+    st.subheader("🏆 COGS Efficiency Ranking (Lowest COGS = Best)")
+
+    # Calcular eficiencia promedio por SKU (promedio simple)
+    df_efficiency = df_cost.groupby(["sku", "product_name", "category"]).agg({
+        "cogs": "sum",
+        "units_sold": "sum"
+    }).reset_index()
+
+    df_efficiency["cogs_per_unit"] = df_efficiency["cogs"] / df_efficiency["units_sold"]
+    df_efficiency = df_efficiency.sort_values("cogs_per_unit", ascending=True)
+
+    st.dataframe(
+        df_efficiency[["sku", "product_name", "category", "units_sold", "cogs_per_unit"]].style.format({
+            "units_sold": "{:,.0f}",
+            "cogs_per_unit": "£{:,.2f}"
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISTA 6: DISTRIBUCIÓN DE COGS POR COMPONENTE (si tienes datos) ---
+    # Nota: Esta sección asume que tienes datos de componentes de COGS (material, mano de obra, etc.)
+    # Si no los tienes, se puede omitir o dejar como placeholder
+
+    st.subheader("📊 COGS Composition (if data available)")
+
+    # Placeholder para cuando tengas datos de componentes
+    st.info("💡 Para un análisis más detallado, se necesitan datos de componentes de COGS (materiales, manufactura, packaging, etc.)")
+
+    # --- DESCARGA DE DATOS DE COSTOS ---
+    st.divider()
+    st.subheader("📥 Download Cost Data")
+
+    col_btn1, col_btn2 = st.columns(2)
+
+    with col_btn1:
+        # Preparar datos de costos para descarga
+        cost_export_cols = [
+            "client_name", "sku", "product_name", "category", 
+            "units_sold", "cogs", "nts"
+        ]
+        df_cost_export = df_cost[cost_export_cols].copy()
+        df_cost_export["cogs_per_unit"] = df_cost_export["cogs"] / df_cost_export["units_sold"]
+        df_cost_export["gp_pct"] = (df_cost_export["nts"] - df_cost_export["cogs"]) / df_cost_export["nts"] * 100
+
+        csv_cost = df_cost_export.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download Cost Data",
+            data=csv_cost,
+            file_name=f"cost_analysis_{selected_year}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+# ============================================================================
+# TAB 5: RAW DATA 
 # ============================================================================
 with tab_raw:
     st.subheader(f"Raw Data by Account – {selected_year}")
