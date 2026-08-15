@@ -1,0 +1,83 @@
+﻿month,client_code,client_name,category,account,gtn_pct
+Apr,1001,Premier Supermarkets UK,Suncare,Seasonal Promotion,0.10
+Apr,1001,Premier Supermarkets UK,Suncare,Trade Marketing,0.05
+Apr,1001,Premier Supermarkets UK,Suncare,Event Discount,0.05
+Apr,1001,Premier Supermarkets UK,Suncare,Display Fees,0.05
+Apr,1001,Premier Supermarkets UK,Suncare,Bundles / Tactical Packs,0.05
+Jun,1001,Premier Supermarkets UK,Nutrition,Seasonal Promotion,0.08
+Jun,1001,Premier Supermarkets UK,Nutrition,Trade Marketing,0.05
+Jun,1001,Premier Supermarkets UK,Nutrition,Event Discount,0.05
+Jun,1001,Premier Supermarkets UK,Nutrition,Display Fees,0.05
+Jun,1001,Premier Supermarkets UK,Nutrition,Bundles / Tactical Packs,0.05
+Jan,1005,GlowOnline UK (E‑com),Skincare,Seasonal Promotion,0.05
+Jan,1005,GlowOnline UK (E‑com),Skincare,Trade Marketing,0.05
+Mar,1005,GlowOnline UK (E‑com),Skincare,Event Discount,0.05
+Jul,1005,GlowOnline UK (E‑com),Suncare,Seasonal Promotion,0.08
+Jul,1005,GlowOnline UK (E‑com),Suncare,Trade Marketing,0.05
+Jul,1005,GlowOnline UK (E‑com),Suncare,Digital Boost,0.10
+Jul,1005,GlowOnline UK (E‑com),Suncare,Event Discount,0.05
+Jul,1005,GlowOnline UK (E‑com),Suncare,Display Fees,0.05
+Jul,1005,GlowOnline UK (E‑com),Suncare,Bundles / Tactical Packs,0.05
+Aug,1005,GlowOnline UK (E‑com),Nutrition,Seasonal Promotion,0.10
+Aug,1005,GlowOnline UK (E‑com),Nutrition,Trade Marketing,0.05
+Aug,1005,GlowOnline UK (E‑com),Nutrition,Digital Boost,0.10
+Aug,1005,GlowOnline UK (E‑com),Nutrition,Event Discount,0.05
+Aug,1005,GlowOnline UK (E‑com),Nutrition,Display Fees,0.05
+Aug,1005,GlowOnline UK (E‑com),Nutrition,Bundles / Tactical Packs,0.05
+Oct,1002,Chemist & Beauty Direct,Skincare,Event Discount,0.05
+Nov,1005,GlowOnline UK (E‑com),Skincare,Digital Boost (Black Friday),0.10
+Nov,1005,GlowOnline UK (E‑com),Skincare,Trade Marketing,0.05
+Nov,1005,GlowOnline UK (E‑com),Skincare,Event Discount,0.05
+Nov,1005,GlowOnline UK (E‑com),Skincare,Display Fees,0.05
+Nov,1005,GlowOnline UK (E‑com),Skincare,Bundles / Tactical Packs,0.05
+Dec,1003,St. James & Co. Retail,Skincare,Event Discount,0.05
+Dec,1007,Urban Luxe Boutiques,Skincare,Event Discount,0.05
+Annual,1001,Premier Supermarkets UK,All,Base Discount,0.00
+Annual,1001,Premier Supermarkets UK,All,PPR,0.30
+Annual,1001,Premier Supermarkets UK,All,Channel Discount,0.05
+Annual,1001,Premier Supermarkets UK,All,Logistics Allowance,0.02
+Annual,1001,Premier Supermarkets UK,All,Payment Terms,0.01
+Annual,1001,Premier Supermarkets UK,All,Annual Rebates,0.02
+Annual,1001,Premier Supermarkets UK,All,Listing Fees,0.00
+Annual,1002,Chemist & Beauty Direct,All,Base Discount,0.15
+Annual,1002,Chemist & Beauty Direct,All,PPR,0.00
+Annual,1002,Chemist & Beauty Direct,All,Channel Discount,0.05
+Annual,1002,Chemist & Beauty Direct,All,Logistics Allowance,0.02
+Annual,1002,Chemist & Beauty Direct,All,Payment Terms,0.01
+Annual,1002,Chemist & Beauty Direct,All,Annual Rebates,0.02
+Annual,1002,Chemist & Beauty Direct,All,Listing Fees,0.00
+Annual,1003,St. James & Co. Retail,All,Base Discount,0.15
+Annual,1003,St. James & Co. Retail,All,PPR,0.00
+Annual,1003,St. James & Co. Retail,All,Channel Discount,0.05
+Annual,1003,St. James & Co. Retail,All,Logistics Allowance,0.02
+Annual,1003,St. James & Co. Retail,All,Payment Terms,0.01
+Annual,1003,St. James & Co. Retail,All,Annual Rebates,0.02
+Annual,1003,St. James & Co. Retail,All,Listing Fees,0.00
+Annual,1004,ValueMart Retail Group,All,Base Discount,0.10
+Annual,1004,ValueMart Retail Group,All,PPR,0.00
+Annual,1004,ValueMart Retail Group,All,Channel Discount,0.10
+Annual,1004,ValueMart Retail Group,All,Logistics Allowance,0.03
+Annual,1004,ValueMart Retail Group,All,Payment Terms,0.01
+Annual,1004,ValueMart Retail Group,All,Annual Rebates,0.00
+Annual,1004,ValueMart Retail Group,All,Listing Fees,0.00
+Annual,1005,GlowOnline UK (E‑com),All,Base Discount,0.15
+Annual,1005,GlowOnline UK (E‑com),All,PPR,0.00
+Annual,1005,GlowOnline UK (E‑com),All,Channel Discount,0.05
+Annual,1005,GlowOnline UK (E‑com),All,Logistics Allowance,0.02
+Annual,1005,GlowOnline UK (E‑com),All,Payment Terms,0.01
+Annual,1005,GlowOnline UK (E‑com),All,Annual Rebates,0.02
+Annual,1005,GlowOnline UK (E‑com),All,Listing Fees,0.00
+Annual,1006,Highland Pharmacy Group,All,Base Discount,0.15
+Annual,1006,Highland Pharmacy Group,All,PPR,0.00
+Annual,1006,Highland Pharmacy Group,All,Channel Discount,0.05
+Annual,1006,Highland Pharmacy Group,All,Logistics Allowance,0.02
+Annual,1006,Highland Pharmacy Group,All,Payment Terms,0.01
+Annual,1006,Highland Pharmacy Group,All,Annual Rebates,0.02
+Annual,1006,Highland Pharmacy Group,All,Listing Fees,0.00
+Annual,1007,Urban Luxe Boutiques,All,Base Discount,0.15
+Annual,1007,Urban Luxe Boutiques,All,PPR,0.00
+Annual,1007,Urban Luxe Boutiques,All,Channel Discount,0.05
+Annual,1007,Urban Luxe Boutiques,All,Logistics Allowance,0.02
+Annual,1007,Urban Luxe Boutiques,All,Payment Terms,0.01
+Annual,1007,Urban Luxe Boutiques,All,Annual Rebates,0.02
+Annual,1007,Urban Luxe Boutiques,All,Listing Fees,0.00
